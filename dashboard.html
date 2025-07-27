@@ -191,7 +191,7 @@
                     telefone: document.getElementById('details-telefone').value,
                     dataHora: document.getElementById('details-dataHora').value
                 };
-                axios.put(`http://localhost:8080/agendapro/agendamento/${updatedAppointment.id}`, updatedAppointment, { headers: { 'Authorization': user.auth } })
+                axios.put(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${updatedAppointment.id}`, updatedAppointment, { headers: { 'Authorization': user.auth } })
                 .then(response => {
                     alert('Agendamento atualizado!');
                     clickedEventInfo.event.remove();
@@ -205,7 +205,7 @@
             function handleDelete() {
                 if (!confirm('Tem certeza?')) return;
                 const eventId = document.getElementById('details-id').value;
-                axios.delete(`http://localhost:8080/agendapro/agendamento/${eventId}`, { headers: { 'Authorization': user.auth } })
+                axios.delete(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${eventId}`, { headers: { 'Authorization': user.auth } })
                 .then(() => {
                     alert('Agendamento excluído!');
                     clickedEventInfo.event.remove();
@@ -241,7 +241,7 @@
         });
 
         function buscarAgendamentos(calendar, user) {
-            axios.get('http://localhost:8080/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
+            axios.get('https://agendapro-5whl.onrender.com/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
             .then(response => {
                 const eventosFormatados = response.data.map(agendamento => ({
                     id: agendamento.id,
