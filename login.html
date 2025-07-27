@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Pro - Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-container h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            width: calc(100% - 20px);
+            padding: 12px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .input-group input:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.25);
+        }
+
+        .btn-login {
+            background-color: #007bff;
+            color: #fff;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-login:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Agenda Pro</h1>
+        <form id="login-form">
+            <div class="input-group">
+                <label for="username">Usuário</label>
+                <input type="text" id="username" name="username" placeholder="Seu usuário" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" placeholder="Sua senha" required>
+            </div>
+            <button type="submit" class="btn-login">Entrar</button>
+        </form>
+    </div>
+
+    <script>
+        // 1. Seleciona o formulário pelo ID que criamos
+        const loginForm = document.getElementById('login-form');
+
+        // 2. Adiciona um "escutador" para o evento de 'submit' (quando o botão Entrar é clicado)
+        loginForm.addEventListener('submit', function(event) {
+            // Previne o comportamento padrão do formulário, que é recarregar a página
+            event.preventDefault();
+
+            // 3. Pega os valores digitados nos campos de input
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // 4. Usa o Axios para fazer a chamada à API do seu back-end
+            // Tenta buscar a lista de agendamentos. Se der certo, o login é válido.
+            axios.get('https://agendapro-5whl.onrender.com/agendapro/agendamento', {
+                auth: {
+                    username: username,
+                    password: password
+                }
+            })
+            .then(response => {
+                // SUCESSO! O login é válido.
+                alert('Login realizado com sucesso!');
+
+                // 5. Guarda as informações do usuário no navegador para usar em outras páginas
+                localStorage.setItem('user', JSON.stringify({
+                    username: username,
+                    // Codifica a senha em Base64 para o cabeçalho de autorização
+                    auth: 'Basic ' + btoa(username + ':' + password)
+                }));
+                
+                // 6. Redireciona o usuário para uma página de "dashboard" (você precisará criá-la)
+                window.location.href = 'dashboard.html';
+
+            })
+            .catch(error => {
+                // ERRO! Login inválido ou servidor fora do ar.
+                console.error('Erro no login:', error);
+                alert('Usuário ou senha inválidos. Tente novamente.');
+            });
+        });
+    </script>
+</body>
+</html>

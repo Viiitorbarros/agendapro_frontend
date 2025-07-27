@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Agenda Pro</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css">
+
+    <style>
+        /* Estilos CSS Completos */
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; }
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1100px; margin: 0 auto 20px auto; }
+        #calendar { max-width: 1100px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; margin-bottom: 20px; }
+        .close-button { font-size: 1.5rem; font-weight: 700; line-height: 1; color: #000; opacity: .5; cursor: pointer; border: none; background: transparent; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input { width: calc(100% - 22px); padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 1em; }
+        .modal-footer { margin-top: 20px; text-align: right; }
+        .btn { padding: 10px 15px; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; margin-left: 10px; }
+        .btn-add { background-color: #28a745; color: white; }
+        .btn-save { background-color: #007bff; color: white; }
+        .btn-edit { background-color: #ffc107; color: black; }
+        .btn-delete { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Painel de Agendamentos</h1>
+        <div id="admin-controls" style="display: none;">
+            <button id="add-appointment-btn" class="btn btn-add">+ Adicionar Agendamento</button>
+        </div>
+    </div>
+
+    <div id="calendar"></div>
+
+    <div id="add-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Novo Agendamento</h2>
+                <button id="close-add-modal-btn" class="close-button">&times;</button>
+            </div>
+            <form id="add-form">
+                <div class="form-group">
+                    <label for="add-nome">Nome do Cliente</label>
+                    <input type="text" id="add-nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="add-telefone">Telefone</label>
+                    <input type="tel" id="add-telefone">
+                </div>
+                <div class="form-group">
+                    <label for="add-dataHora">Data e Hora</label>
+                    <input type="datetime-local" id="add-dataHora" required>
+                </div>
+                <button type="submit" class="btn btn-save">Salvar Agendamento</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="details-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="details-title">Detalhes do Agendamento</h2>
+                <button id="close-details-modal-btn" class="close-button">&times;</button>
+            </div>
+            <form id="details-form">
+                <input type="hidden" id="details-id">
+                <div class="form-group">
+                    <label for="details-nome">Nome do Cliente</label>
+                    <input type="text" id="details-nome" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="details-telefone">Telefone</label>
+                    <input type="tel" id="details-telefone" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="details-dataHora">Data e Hora</label>
+                    <input type="datetime-local" id="details-dataHora" readonly>
+                </div>
+                <div id="details-footer" class="modal-footer"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- 1. SELEÇÃO DE ELEMENTOS ---
+            const calendarEl = document.getElementById('calendar');
+            const user = JSON.parse(localStorage.getItem('user'));
+
+            const adminControls = document.getElementById('admin-controls');
+            const addAppointmentBtn = document.getElementById('add-appointment-btn');
+            
+            const addModal = document.getElementById('add-modal');
+            const closeAddModalBtn = document.getElementById('close-add-modal-btn');
+            const addForm = document.getElementById('add-form');
+
+            const detailsModal = document.getElementById('details-modal');
+            const closeDetailsModalBtn = document.getElementById('close-details-modal-btn');
+            const detailsForm = document.getElementById('details-form');
+            const detailsFooter = document.getElementById('details-footer');
+            
+            let clickedEventInfo = null;
+
+            // --- 2. VERIFICAÇÃO DE LOGIN ---
+            if (!user || !user.auth) {
+                alert('Você não está logado.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // --- 3. INICIALIZAÇÃO DO CALENDÁRIO ---
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'pt-br',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
+                
+                eventClick: function(info) {
+                    clickedEventInfo = info;
+                    
+                    document.getElementById('details-id').value = info.event.id;
+                    document.getElementById('details-nome').value = info.event.title;
+                    document.getElementById('details-telefone').value = info.event.extendedProps.telefone || '';
+                    
+                    const eventDate = info.event.start;
+                    const formattedDate = new Date(eventDate.getTime() - (eventDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    document.getElementById('details-dataHora').value = formattedDate;
+
+                    setupDetailsModalButtons('view');
+                    detailsModal.style.display = 'flex';
+                }
+            });
+            calendar.render();
+
+            // --- 4. BUSCA INICIAL E SETUP DA UI ---
+            buscarAgendamentos(calendar, user);
+            if (user.username === 'admin') {
+                adminControls.style.display = 'block';
+            }
+
+            // --- 5. LÓGICA DOS MODAIS ---
+
+            // Funções de Fechamento
+            function closeAddModal() { addModal.style.display = 'none'; addForm.reset(); }
+            function closeDetailsModal() { detailsModal.style.display = 'none'; }
+
+            // Eventos do Modal de ADICIONAR
+            addAppointmentBtn.addEventListener('click', () => addModal.style.display = 'flex');
+            closeAddModalBtn.addEventListener('click', closeAddModal);
+            addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAddModal(); });
+            addForm.addEventListener('submit', handleAdd);
+
+            // Eventos do Modal de DETALHES/EDITAR
+            closeDetailsModalBtn.addEventListener('click', closeDetailsModal);
+            detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeDetailsModal(); });
+            detailsForm.addEventListener('submit', handleEdit);
+            
+            // Evento para fechar com a tecla ESC
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAddModal(); closeDetailsModal(); } });
+
+            // --- 6. FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
+            function handleAdd(event) {
+                event.preventDefault();
+                const agendamentoParaSalvar = {
+                    nome: document.getElementById('add-nome').value,
+                    telefone: document.getElementById('add-telefone').value,
+                    dataHora: document.getElementById('add-dataHora').value
+                };
+                axios.post('https://agendapro-5whl.onrender.com/agendapro/agendamento', agendamentoParaSalvar, { headers: { 'Authorization': user.auth } })
+                .then(response => {
+                    alert('Agendamento criado com sucesso!');
+                    const agendamento = response.data;
+                    calendar.addEvent({ id: agendamento.id, title: agendamento.nome, start: agendamento.dataHora, extendedProps: { telefone: agendamento.telefone } });
+                    closeAddModal();
+                })
+                .catch(err => alert('Erro: ' + (err.response?.data?.message || 'Não foi possível criar.')));
+            }
+            
+            function handleEdit(event) {
+                event.preventDefault();
+                const updatedAppointment = {
+                    id: document.getElementById('details-id').value,
+                    nome: document.getElementById('details-nome').value,
+                    telefone: document.getElementById('details-telefone').value,
+                    dataHora: document.getElementById('details-dataHora').value
+                };
+                axios.put(`http://localhost:8080/agendapro/agendamento/${updatedAppointment.id}`, updatedAppointment, { headers: { 'Authorization': user.auth } })
+                .then(response => {
+                    alert('Agendamento atualizado!');
+                    clickedEventInfo.event.remove();
+                    const agendamento = response.data;
+                    calendar.addEvent({ id: agendamento.id, title: agendamento.nome, start: agendamento.dataHora, extendedProps: { telefone: agendamento.telefone } });
+                    closeDetailsModal();
+                })
+                .catch(err => alert('Erro ao atualizar.'));
+            }
+
+            function handleDelete() {
+                if (!confirm('Tem certeza?')) return;
+                const eventId = document.getElementById('details-id').value;
+                axios.delete(`http://localhost:8080/agendapro/agendamento/${eventId}`, { headers: { 'Authorization': user.auth } })
+                .then(() => {
+                    alert('Agendamento excluído!');
+                    clickedEventInfo.event.remove();
+                    closeDetailsModal();
+                })
+                .catch(err => alert('Erro ao excluir.'));
+            }
+
+            function setupDetailsModalButtons(mode) {
+                detailsFooter.innerHTML = '';
+                const formInputs = detailsForm.querySelectorAll('input:not([type="hidden"])');
+                if (mode === 'view') {
+                    formInputs.forEach(input => input.setAttribute('readonly', true));
+                    if (user && user.username === 'admin') {
+                        const editBtn = document.createElement('button');
+                        editBtn.type = 'button'; editBtn.className = 'btn btn-edit'; editBtn.innerText = 'Editar';
+                        editBtn.onclick = () => setupDetailsModalButtons('edit');
+                        detailsFooter.appendChild(editBtn);
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button'; deleteBtn.className = 'btn btn-delete'; deleteBtn.innerText = 'Excluir';
+                        deleteBtn.onclick = handleDelete;
+                        detailsFooter.appendChild(deleteBtn);
+                    }
+                } else { // modo 'edit'
+                    formInputs.forEach(input => input.removeAttribute('readonly'));
+                    document.getElementById('details-nome').focus();
+                    const saveBtn = document.createElement('button');
+                    saveBtn.type = 'submit'; saveBtn.className = 'btn btn-save'; saveBtn.innerText = 'Salvar';
+                    detailsFooter.appendChild(saveBtn);
+                }
+            }
+        });
+
+        function buscarAgendamentos(calendar, user) {
+            axios.get('http://localhost:8080/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
+            .then(response => {
+                const eventosFormatados = response.data.map(agendamento => ({
+                    id: agendamento.id,
+                    title: agendamento.nome,
+                    start: agendamento.dataHora,
+                    extendedProps: { telefone: agendamento.telefone }
+                }));
+                calendar.addEventSource(eventosFormatados);
+            })
+            .catch(error => console.error('Erro ao buscar agendamentos!', error));
+        }
+    </script>
+</body>
+</html>
