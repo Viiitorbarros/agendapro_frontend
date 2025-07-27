@@ -40,6 +40,7 @@
 
     <div id="calendar"></div>
 
+    <!-- Modal de Adicionar -->
     <div id="add-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -64,6 +65,7 @@
         </div>
     </div>
 
+    <!-- Modal de Detalhes/Editar -->
     <div id="details-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -112,16 +114,34 @@
             // --- 2. VERIFICAÇÃO DE LOGIN ---
             if (!user || !user.auth) {
                 alert('Você não está logado.');
-                window.location.href = 'login.html';
+                window.location.href = 'index.html'; // Assumindo que login.html foi renomeado
                 return;
             }
 
-            // --- 3. INICIALIZAÇÃO DO CALENDÁRIO ---
+            // --- 3. INICIALIZAÇÃO DO CALENDÁRIO (COM A CORREÇÃO) ---
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'pt-br',
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
                 buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
                 
+                // O calendário agora busca seus próprios eventos de forma robusta.
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    axios.get('https://agendapro-5whl.onrender.com/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
+                    .then(response => {
+                        const eventosFormatados = response.data.map(agendamento => ({
+                            id: agendamento.id,
+                            title: agendamento.nome,
+                            start: agendamento.dataHora,
+                            extendedProps: { telefone: agendamento.telefone }
+                        }));
+                        successCallback(eventosFormatados); // Informa ao calendário sobre os eventos carregados
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar agendamentos!', error);
+                        failureCallback(error); // Informa ao calendário sobre a falha
+                    });
+                },
+
                 eventClick: function(info) {
                     clickedEventInfo = info;
                     
@@ -139,30 +159,21 @@
             });
             calendar.render();
 
-            // --- 4. BUSCA INICIAL E SETUP DA UI ---
-            buscarAgendamentos(calendar, user);
+            // --- 4. SETUP DA UI ---
             if (user.username === 'admin') {
                 adminControls.style.display = 'block';
             }
 
             // --- 5. LÓGICA DOS MODAIS ---
-
-            // Funções de Fechamento
             function closeAddModal() { addModal.style.display = 'none'; addForm.reset(); }
             function closeDetailsModal() { detailsModal.style.display = 'none'; }
-
-            // Eventos do Modal de ADICIONAR
             addAppointmentBtn.addEventListener('click', () => addModal.style.display = 'flex');
             closeAddModalBtn.addEventListener('click', closeAddModal);
             addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAddModal(); });
             addForm.addEventListener('submit', handleAdd);
-
-            // Eventos do Modal de DETALHES/EDITAR
             closeDetailsModalBtn.addEventListener('click', closeDetailsModal);
             detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeDetailsModal(); });
             detailsForm.addEventListener('submit', handleEdit);
-            
-            // Evento para fechar com a tecla ESC
             document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAddModal(); closeDetailsModal(); } });
 
             // --- 6. FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
@@ -176,8 +187,7 @@
                 axios.post('https://agendapro-5whl.onrender.com/agendapro/agendamento', agendamentoParaSalvar, { headers: { 'Authorization': user.auth } })
                 .then(response => {
                     alert('Agendamento criado com sucesso!');
-                    const agendamento = response.data;
-                    calendar.addEvent({ id: agendamento.id, title: agendamento.nome, start: agendamento.dataHora, extendedProps: { telefone: agendamento.telefone } });
+                    calendar.refetchEvents(); // Diz ao calendário para buscar os eventos novamente
                     closeAddModal();
                 })
                 .catch(err => alert('Erro: ' + (err.response?.data?.message || 'Não foi possível criar.')));
@@ -194,9 +204,7 @@
                 axios.put(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${updatedAppointment.id}`, updatedAppointment, { headers: { 'Authorization': user.auth } })
                 .then(response => {
                     alert('Agendamento atualizado!');
-                    clickedEventInfo.event.remove();
-                    const agendamento = response.data;
-                    calendar.addEvent({ id: agendamento.id, title: agendamento.nome, start: agendamento.dataHora, extendedProps: { telefone: agendamento.telefone } });
+                    calendar.refetchEvents(); // Diz ao calendário para buscar os eventos novamente
                     closeDetailsModal();
                 })
                 .catch(err => alert('Erro ao atualizar.'));
@@ -208,7 +216,7 @@
                 axios.delete(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${eventId}`, { headers: { 'Authorization': user.auth } })
                 .then(() => {
                     alert('Agendamento excluído!');
-                    clickedEventInfo.event.remove();
+                    calendar.refetchEvents(); // Diz ao calendário para buscar os eventos novamente
                     closeDetailsModal();
                 })
                 .catch(err => alert('Erro ao excluir.'));
@@ -239,20 +247,6 @@
                 }
             }
         });
-
-        function buscarAgendamentos(calendar, user) {
-            axios.get('https://agendapro-5whl.onrender.com/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
-            .then(response => {
-                const eventosFormatados = response.data.map(agendamento => ({
-                    id: agendamento.id,
-                    title: agendamento.nome,
-                    start: agendamento.dataHora,
-                    extendedProps: { telefone: agendamento.telefone }
-                }));
-                calendar.addEventSource(eventosFormatados);
-            })
-            .catch(error => console.error('Erro ao buscar agendamentos!', error));
-        }
     </script>
 </body>
 </html>
