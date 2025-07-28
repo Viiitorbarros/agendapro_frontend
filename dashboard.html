@@ -113,10 +113,12 @@
 
             // --- 2. VERIFICAÇÃO DE LOGIN ---
             if (!user || !user.auth) {
-                alert('Você não está logado.');
-                window.location.href = 'index.html'; // Assumindo que login.html foi renomeado
+                alert('DEBUG: Informações de login não encontradas no localStorage. A redirecionar...');
+                window.location.href = 'index.html';
                 return;
             }
+            alert('DEBUG: Utilizador encontrado no localStorage: ' + user.username);
+
 
             // --- 3. INICIALIZAÇÃO DO CALENDÁRIO (COM A CORREÇÃO) ---
             const calendar = new FullCalendar.Calendar(calendarEl, {
@@ -126,19 +128,31 @@
                 
                 // O calendário agora busca seus próprios eventos de forma robusta.
                 events: function(fetchInfo, successCallback, failureCallback) {
+                    alert('DEBUG: O calendário está a tentar buscar os eventos...');
                     axios.get('https://agendapro-5whl.onrender.com/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
                     .then(response => {
+                        alert('DEBUG: Eventos recebidos com sucesso! Quantidade: ' + response.data.length);
                         const eventosFormatados = response.data.map(agendamento => ({
                             id: agendamento.id,
                             title: agendamento.nome,
                             start: agendamento.dataHora,
                             extendedProps: { telefone: agendamento.telefone }
                         }));
-                        successCallback(eventosFormatados); // Informa ao calendário sobre os eventos carregados
+                        successCallback(eventosFormatados);
                     })
                     .catch(error => {
-                        console.error('Erro ao buscar agendamentos!', error);
-                        failureCallback(error); // Informa ao calendário sobre a falha
+                        let errorMsg = 'DEBUG: Falha ao buscar eventos.\n\n';
+                        if (error.response) {
+                            errorMsg += `O servidor respondeu com um erro.\nStatus: ${error.response.status}\n`;
+                            errorMsg += `Mensagem: ${JSON.stringify(error.response.data)}`;
+                        } else if (error.request) {
+                            errorMsg += 'A requisição foi feita, mas não houve resposta do servidor. Verifique o CORS ou a conexão de rede.';
+                        } else {
+                            errorMsg += `Erro ao configurar a requisição: ${error.message}`;
+                        }
+                        alert(errorMsg);
+                        console.error('Erro detalhado ao buscar agendamentos!', error);
+                        failureCallback(error);
                     });
                 },
 
@@ -187,7 +201,7 @@
                 axios.post('https://agendapro-5whl.onrender.com/agendapro/agendamento', agendamentoParaSalvar, { headers: { 'Authorization': user.auth } })
                 .then(response => {
                     alert('Agendamento criado com sucesso!');
-                    calendar.refetchEvents(); // Diz ao calendário para buscar os eventos novamente
+                    calendar.refetchEvents();
                     closeAddModal();
                 })
                 .catch(err => alert('Erro: ' + (err.response?.data?.message || 'Não foi possível criar.')));
@@ -204,7 +218,7 @@
                 axios.put(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${updatedAppointment.id}`, updatedAppointment, { headers: { 'Authorization': user.auth } })
                 .then(response => {
                     alert('Agendamento atualizado!');
-                    calendar.refetchEvents(); // Diz ao calendário para buscar os eventos novamente
+                    calendar.refetchEvents();
                     closeDetailsModal();
                 })
                 .catch(err => alert('Erro ao atualizar.'));
@@ -216,7 +230,7 @@
                 axios.delete(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${eventId}`, { headers: { 'Authorization': user.auth } })
                 .then(() => {
                     alert('Agendamento excluído!');
-                    calendar.refetchEvents(); // Diz ao calendário para buscar os eventos novamente
+                    calendar.refetchEvents();
                     closeDetailsModal();
                 })
                 .catch(err => alert('Erro ao excluir.'));
