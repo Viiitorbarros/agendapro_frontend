@@ -129,7 +129,7 @@
                 // O calendário agora busca seus próprios eventos de forma robusta.
                 events: function(fetchInfo, successCallback, failureCallback) {
                     alert('DEBUG: O calendário está a tentar buscar os eventos...');
-                    axios.get('https://agendapro-5whl.onrender.com/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
+                    axios.get('https://agendapro.fly.dev/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
                     .then(response => {
                         alert('DEBUG: Eventos recebidos com sucesso! Quantidade: ' + response.data.length);
                         const eventosFormatados = response.data.map(agendamento => ({
@@ -198,7 +198,7 @@
                     telefone: document.getElementById('add-telefone').value,
                     dataHora: document.getElementById('add-dataHora').value
                 };
-                axios.post('https://agendapro-5whl.onrender.com/agendapro/agendamento', agendamentoParaSalvar, { headers: { 'Authorization': user.auth } })
+                axios.post('https://agendapro.fly.dev/agendapro/agendamento', agendamentoParaSalvar, { headers: { 'Authorization': user.auth } })
                 .then(response => {
                     alert('Agendamento criado com sucesso!');
                     calendar.refetchEvents();
@@ -215,7 +215,7 @@
                     telefone: document.getElementById('details-telefone').value,
                     dataHora: document.getElementById('details-dataHora').value
                 };
-                axios.put(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${updatedAppointment.id}`, updatedAppointment, { headers: { 'Authorization': user.auth } })
+                axios.put(`https://agendapro.fly.dev/agendapro/agendamento/${updatedAppointment.id}`, updatedAppointment, { headers: { 'Authorization': user.auth } })
                 .then(response => {
                     alert('Agendamento atualizado!');
                     calendar.refetchEvents();
@@ -227,7 +227,7 @@
             function handleDelete() {
                 if (!confirm('Tem certeza?')) return;
                 const eventId = document.getElementById('details-id').value;
-                axios.delete(`https://agendapro-5whl.onrender.com/agendapro/agendamento/${eventId}`, { headers: { 'Authorization': user.auth } })
+                axios.delete(`https://agendapro.fly.dev/agendapro/agendamento/${eventId}`, { headers: { 'Authorization': user.auth } })
                 .then(() => {
                     alert('Agendamento excluído!');
                     calendar.refetchEvents();
