@@ -113,11 +113,11 @@
 
             // --- 2. VERIFICAÇÃO DE LOGIN ---
             if (!user || !user.auth) {
-                alert('DEBUG: Informações de login não encontradas no localStorage. A redirecionar...');
+            
                 window.location.href = 'index.html';
                 return;
             }
-            alert('DEBUG: Utilizador encontrado no localStorage: ' + user.username);
+            
 
 
             // --- 3. INICIALIZAÇÃO DO CALENDÁRIO (COM A CORREÇÃO) ---
@@ -128,10 +128,8 @@
                 
                 // O calendário agora busca seus próprios eventos de forma robusta.
                 events: function(fetchInfo, successCallback, failureCallback) {
-                    alert('DEBUG: O calendário está a tentar buscar os eventos...');
                     axios.get('https://agendapro.fly.dev/agendapro/agendamento', { headers: { 'Authorization': user.auth } })
                     .then(response => {
-                        alert('DEBUG: Eventos recebidos com sucesso! Quantidade: ' + response.data.length);
                         const eventosFormatados = response.data.map(agendamento => ({
                             id: agendamento.id,
                             title: agendamento.nome,
